@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold">Products</div>
+      <div class="card-body">
+        <input id="search" class="form-control mb-2" placeholder="Search products...">
+        <div id="products" class="list-group scroll-box"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold"><i class="bi bi-cart3"></i> Your Cart (<span id="count">0</span>)</div>
+      <ul id="cart" class="list-group list-group-flush"></ul>
+      <div class="card-body">
+        <p id="empty" class="text-muted mb-2">Add items to see recommendations.</p>
+        <button id="checkout" class="btn btn-success w-100" disabled>Checkout</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card shadow-sm mb-3">
+      <div class="card-header fw-bold text-success"><i class="bi bi-link-45deg"></i> Frequently bought together</div>
+      <ul id="related" class="list-group list-group-flush"></ul>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-header fw-bold text-success"><i class="bi bi-star-fill"></i> Top picks for you</div>
+      <ul id="top" class="list-group list-group-flush"></ul>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let cart = [];
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+async function loadProducts(q = "") {
+  const data = await (await fetch("/api/products?q=" + encodeURIComponent(q))).json();
+  $("products").innerHTML = data.map(p =>
+    `<a class="list-group-item list-group-item-action product" data-name="${esc(p.name)}">
+       ${esc(p.name)} <i class="bi bi-plus-circle float-end text-success"></i></a>`).join("");
+}
+
+function add(name) {
+  if (!cart.includes(name)) { cart.push(name); renderCart(); }
+}
+function remove(name) { cart = cart.filter(x => x !== name); renderCart(); }
+
+function renderCart() {
+  $("count").textContent = cart.length;
+  $("cart").innerHTML = cart.map(n =>
+    `<li class="list-group-item d-flex justify-content-between cap">${esc(n)}
+       <button class="btn btn-sm btn-outline-danger" data-remove="${esc(n)}"><i class="bi bi-x"></i></button></li>`).join("");
+  $("empty").style.display = cart.length ? "none" : "block";
+  $("checkout").disabled = !cart.length;
+  refresh();
+}
+
+function recItem(name, badge, cls) {
+  return `<li class="list-group-item d-flex justify-content-between align-items-center product" data-name="${esc(name)}">
+    <span>${esc(name)}</span><span class="badge ${cls}">${badge}</span></li>`;
+}
+
+async function refresh() {
+  if (!cart.length) { $("related").innerHTML = ""; $("top").innerHTML = ""; return; }
+  const r = await (await fetch("/api/recommend", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({cart, n: 5})})).json();
+  $("related").innerHTML = r.related.length
+    ? r.related.map(x => recItem(x.item, `${Math.round(x.confidence*100)}% · lift ${x.lift}`, "bg-success")).join("")
+    : `<li class="list-group-item text-muted">No strong rule for this cart yet.</li>`;
+  $("top").innerHTML = r.top_picks.map(x =>
+    recItem(x.item, `${Math.round(x.probability*100)}% · ${x.reason}`, x.reason === "rule" ? "bg-success" : "bg-secondary")).join("");
+}
+
+document.addEventListener("click", e => {
+  const rm = e.target.closest("[data-remove]");
+  if (rm) return remove(rm.dataset.remove);
+  const p = e.target.closest("[data-name]");
+  if (p) add(p.dataset.name);
+});
+$("search").addEventListener("input", e => loadProducts(e.target.value));
+$("checkout").addEventListener("click", async () => {
+  const r = await (await fetch("/api/checkout", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({cart})})).json();
+  alert("Order #" + r.transaction_id + " saved (" + r.items + " items). Thank you!");
+  cart = []; renderCart();
+});
+loadProducts(); renderCart();
+</script>
+{% endblock %}

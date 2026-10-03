@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}About{% endblock %}
+{% block content %}
+<h4 class="mb-3">How the recommendations work</h4>
+<div class="row g-4">
+  <div class="col-lg-6"><div class="card shadow-sm p-3 h-100">
+    <h6 class="text-success">The idea</h6>
+    <p>The system studies thousands of past shopping baskets and finds items that are
+    often bought together. It saves these patterns as <b>association rules</b>, such as
+    <i>{chawal} &rarr; {cooking oil}</i>. When you add items to your cart, it looks up
+    the matching rules and suggests the items that follow.</p>
+    <h6 class="text-success">Algorithms</h6>
+    <p><b>Apriori</b> builds frequent itemsets level by level and prunes rare candidates.
+    <b>FP-Growth</b> compresses the data into a tree and avoids candidate generation,
+    which makes it faster at low support. Both find identical itemsets; see the
+    Analytics page for the runtime comparison.</p>
+  </div></div>
+  <div class="col-lg-6"><div class="card shadow-sm p-3 h-100">
+    <h6 class="text-success">Metrics</h6>
+    <ul>
+      <li><b>Support:</b> how often the items appear together across all baskets.</li>
+      <li><b>Confidence:</b> of the baskets with the cart item, how many also had the
+      suggested item.</li>
+      <li><b>Lift:</b> how much more likely the pair is than by chance. Above 1 means a
+      real positive link.</li>
+    </ul>
+    <h6 class="text-success">Two lists</h6>
+    <p><b>Frequently bought together</b> uses rules only, ranked by confidence.
+    <b>Top picks</b> blends rule confidence with each item's overall popularity, which
+    scored best in our evaluation.</p>
+    <h6 class="text-success">Data</h6>
+    <p>The Groceries dataset (14,758 real baskets) plus 300 synthetic baskets of local
+    items (chai, chawal, daal and others) added for demonstration.</p>
+  </div></div>
+</div>
+{% endblock %}

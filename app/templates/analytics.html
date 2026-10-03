@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Analytics{% endblock %}
+{% block content %}
+<h4 class="mb-3">Model Analytics</h4>
+<div class="row g-4">
+  <div class="col-lg-6"><div class="card shadow-sm p-3">
+    <h6>Top 10 rules by lift</h6><canvas id="rulesChart"></canvas></div></div>
+  <div class="col-lg-6"><div class="card shadow-sm p-3">
+    <h6>Apriori vs FP-Growth runtime (seconds)</h6><canvas id="benchChart"></canvas></div></div>
+  <div class="col-12"><div class="card shadow-sm p-3">
+    <h6>Hit rate by recommendation strategy</h6><canvas id="evalChart" height="90"></canvas></div></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(async () => {
+  const rules = await (await fetch("/api/rules?limit=10&sort=lift")).json();
+  new Chart(document.getElementById("rulesChart"), {
+    type: "bar",
+    data: { labels: rules.map(r => r.antecedents + " → " + r.consequents),
+            datasets: [{ label: "Lift", data: rules.map(r => r.lift), backgroundColor: "#1f6f4a" }] },
+    options: { indexAxis: "y" }
+  });
+
+  const s = await (await fetch("/api/stats")).json();
+  new Chart(document.getElementById("benchChart"), {
+    type: "line",
+    data: { labels: s.benchmark.map(b => b.min_support),
+            datasets: [
+              { label: "Apriori", data: s.benchmark.map(b => b.apriori_s), borderColor: "#c0392b" },
+              { label: "FP-Growth", data: s.benchmark.map(b => b.fpgrowth_s), borderColor: "#1f6f4a" }] },
+    options: { scales: { x: { title: { display: true, text: "min_support" } } } }
+  });
+
+  const colors = ["#1f6f4a", "#52a67f", "#a3d4bc"];
+  new Chart(document.getElementById("evalChart"), {
+    type: "bar",
+    data: { labels: s.evaluation.map(e => e.strategy),
+            datasets: ["hit@3", "hit@5", "hit@10"].map((k, i) =>
+              ({ label: k, data: s.evaluation.map(e => e[k]), backgroundColor: colors[i] })) }
+  });
+})();
+</script>
+{% endblock %}
