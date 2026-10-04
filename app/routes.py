@@ -1,3 +1,4 @@
+from app.catalog import describe
 import os
 import pandas as pd
 from flask import Blueprint, jsonify, request, current_app, render_template
@@ -25,7 +26,7 @@ def products():
         "SELECT product_id, name FROM products WHERE name LIKE ? ORDER BY popularity DESC",
         (f"%{q}%",)).fetchall()
     conn.close()
-    return jsonify([dict(r) for r in rows])
+    return jsonify([{**dict(r), **describe(r["name"])} for r in rows])
 
 @bp.route("/api/recommend", methods=["POST"])
 def recommend():

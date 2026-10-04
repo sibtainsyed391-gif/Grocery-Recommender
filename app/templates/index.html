@@ -1,99 +1,223 @@
-{% extends "base.html" %}
-{% block content %}
-<div class="row g-4">
-  <div class="col-lg-4">
-    <div class="card shadow-sm">
-      <div class="card-header fw-bold">Products</div>
-      <div class="card-body">
-        <input id="search" class="form-control mb-2" placeholder="Search products...">
-        <div id="products" class="list-group scroll-box"></div>
-      </div>
-    </div>
-  </div>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GroceryMate</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Plus Jakarta Sans',sans-serif;background:#F6F8F5}
+.num{font-variant-numeric:tabular-nums}
+.card{transition:transform .2s,box-shadow .2s}
+.card:hover{transform:translateY(-4px);box-shadow:0 14px 28px -14px rgba(22,78,61,.4)}
+.pop{animation:pop .3s}@keyframes pop{50%{transform:scale(1.3)}}
+.fadein{animation:fi .35s}@keyframes fi{from{opacity:0;transform:translateY(8px)}}
+#drawer{transition:transform .3s}
+</style>
+</head>
+<body class="text-gray-900">
 
-  <div class="col-lg-4">
-    <div class="card shadow-sm">
-      <div class="card-header fw-bold"><i class="bi bi-cart3"></i> Your Cart (<span id="count">0</span>)</div>
-      <ul id="cart" class="list-group list-group-flush"></ul>
-      <div class="card-body">
-        <p id="empty" class="text-muted mb-2">Add items to see recommendations.</p>
-        <button id="checkout" class="btn btn-success w-100" disabled>Checkout</button>
-      </div>
-    </div>
+<header class="sticky top-0 z-30 bg-white border-b border-gray-100">
+  <div class="max-w-7xl mx-auto px-4 h-16 flex items-center gap-4">
+    <a href="/" class="flex items-center gap-2 font-extrabold text-xl">
+      <span class="w-9 h-9 rounded-xl bg-[#164E3D] text-white grid place-items-center">🛒</span>GroceryMate</a>
+    <nav class="hidden md:flex gap-1 text-sm font-semibold">
+      <a href="/" class="px-3 py-2 rounded-lg bg-emerald-50 text-emerald-800">Shop</a>
+      <a href="/analytics" class="px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50">Basket Analytics</a>
+      <a href="/about" class="px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50">ML Model</a>
+    </nav>
+    <input id="search" placeholder="Search milk, chawal, bread..."
+      class="ml-auto flex-1 max-w-sm rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+    <button onclick="openDrawer()" class="flex items-center gap-2 bg-[#164E3D] text-white rounded-xl px-4 py-2 font-semibold text-sm hover:bg-[#0F392B]">
+      🛍️ Cart <span id="badge" class="bg-emerald-400 text-[#0F392B] rounded-full px-2 text-xs font-bold">0</span>
+      <span id="hdrTotal" class="num hidden sm:inline">Rs 0</span></button>
   </div>
+</header>
 
-  <div class="col-lg-4">
-    <div class="card shadow-sm mb-3">
-      <div class="card-header fw-bold text-success"><i class="bi bi-link-45deg"></i> Frequently bought together</div>
-      <ul id="related" class="list-group list-group-flush"></ul>
+<main class="max-w-7xl mx-auto px-4 py-6">
+  <section class="rounded-3xl bg-gradient-to-br from-[#0F392B] to-[#164E3D] text-white p-8 mb-6">
+    <p class="text-emerald-300 text-sm font-semibold">✨ Smart Recommender Active · Trained on 15,000+ grocery baskets</p>
+    <h1 class="text-3xl md:text-4xl font-extrabold mt-2">Fresh Groceries, Intelligently Bundled</h1>
+    <p class="text-emerald-100/90 mt-2 max-w-2xl">Add items and watch your basket surface pairings mined with Apriori and FP-Growth from real shopping habits.</p>
+  </section>
+
+  <div class="grid lg:grid-cols-12 gap-6">
+    <div class="lg:col-span-8">
+      <div class="flex flex-wrap items-center gap-2 mb-4">
+        <div id="pills" class="flex flex-wrap gap-1 bg-white rounded-2xl p-1 shadow-sm"></div>
+        <span id="shown" class="ml-auto text-sm text-gray-500"></span>
+      </div>
+      <div id="grid" class="grid grid-cols-2 xl:grid-cols-3 gap-4"></div>
     </div>
-    <div class="card shadow-sm">
-      <div class="card-header fw-bold text-success"><i class="bi bi-star-fill"></i> Top picks for you</div>
-      <ul id="top" class="list-group list-group-flush"></ul>
-    </div>
+
+    <aside class="lg:col-span-4">
+      <div class="lg:sticky lg:top-24 space-y-4">
+        <div class="bg-white rounded-2xl shadow-sm p-5">
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="font-bold">Your Cart (<span id="cnt">0</span>)</h2>
+            <button onclick="clearCart()" class="text-sm text-gray-400 hover:text-red-500">Clear</button></div>
+          <div id="miniCart" class="space-y-2 text-sm max-h-44 overflow-y-auto"></div>
+          <div class="flex justify-between font-bold mt-3 pt-3 border-t"><span>Subtotal</span><span id="sub" class="num">Rs 0</span></div>
+          <button onclick="openDrawer()" class="w-full mt-3 bg-[#164E3D] hover:bg-[#0F392B] text-white rounded-xl py-3 font-semibold">Checkout →</button>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm p-5">
+          <div class="flex justify-between items-center mb-3"><h2 class="font-bold">Frequently Bought Together</h2>
+            <span class="text-xs bg-emerald-50 text-emerald-700 rounded px-2 py-1 font-mono">Live rules</span></div>
+          <div id="related" class="space-y-2"></div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm p-5">
+          <h2 class="font-bold mb-3">Top Picks For You</h2>
+          <div id="top" class="space-y-2"></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<div id="overlay" onclick="closeDrawer()" class="fixed inset-0 bg-black/40 z-40 hidden"></div>
+<aside id="drawer" class="fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 translate-x-full flex flex-col">
+  <div class="p-5 flex justify-between items-center border-b">
+    <h2 class="text-xl font-extrabold">Your Basket (<span id="dcnt">0</span>)</h2>
+    <button onclick="closeDrawer()" class="text-2xl text-gray-400 hover:text-gray-700">×</button></div>
+  <div class="px-5 py-3 bg-gray-50 text-sm">
+    <div class="flex justify-between"><span id="freeMsg"></span><span id="freePct" class="num text-gray-500"></span></div>
+    <div class="h-2 bg-gray-200 rounded-full mt-2"><div id="freeBar" class="h-2 bg-emerald-500 rounded-full transition-all" style="width:0"></div></div></div>
+  <div id="dItems" class="flex-1 overflow-y-auto p-5 space-y-4"></div>
+  <div class="p-5 border-t space-y-1 text-sm">
+    <div class="flex justify-between"><span class="text-gray-500">Subtotal</span><span id="dSub" class="num"></span></div>
+    <div class="flex justify-between"><span class="text-gray-500">Delivery</span><span id="dFee" class="num"></span></div>
+    <div class="flex justify-between text-lg font-extrabold pt-2"><span>Total</span><span id="dTot" class="num"></span></div>
+    <button onclick="checkout()" class="w-full mt-3 bg-[#164E3D] hover:bg-[#0F392B] text-white rounded-xl py-3 font-semibold">Proceed to Checkout →</button>
+  </div>
+</aside>
+
+<div id="modal" class="fixed inset-0 z-50 hidden bg-black/50 grid place-items-center p-4">
+  <div class="bg-white rounded-3xl p-6 w-full max-w-sm fadein">
+    <div class="text-5xl text-center">✅</div>
+    <h3 class="text-xl font-extrabold text-center mt-2">Order placed!</h3>
+    <div id="rcpt" class="mt-4 text-sm space-y-1"></div>
+    <button onclick="$('modal').classList.add('hidden')" class="w-full mt-5 bg-[#164E3D] text-white rounded-xl py-3 font-semibold">Continue shopping</button>
   </div>
 </div>
-{% endblock %}
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white text-sm rounded-full px-5 py-2 opacity-0 transition-opacity pointer-events-none"></div>
 
-{% block scripts %}
 <script>
-let cart = [];
-const $ = id => document.getElementById(id);
-const esc = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cap=s=>s.replace(/\b\w/g,c=>c.toUpperCase());
+const rs=n=>'Rs '+Math.round(n).toLocaleString();
+const FREE=3000, FEE=150;
+const CATS=['All','Dairy & Eggs','Bakery','Fresh Produce','Meat & Deli','Beverages','Pantry & Home'];
+const GRAD={'Dairy & Eggs':'linear-gradient(135deg,#e0f2fe,#f0f9ff)','Bakery':'linear-gradient(135deg,#fef3c7,#fff7ed)',
+ 'Fresh Produce':'linear-gradient(135deg,#dcfce7,#f0fdf4)','Meat & Deli':'linear-gradient(135deg,#fee2e2,#fff1f2)',
+ 'Beverages':'linear-gradient(135deg,#ede9fe,#faf5ff)','Pantry & Home':'linear-gradient(135deg,#f3f4f6,#fafafa)'};
+let products=[], byName={}, cart={}, cat='All', q='', rec={related:[],top_picks:[]};
 
-async function loadProducts(q = "") {
-  const data = await (await fetch("/api/products?q=" + encodeURIComponent(q))).json();
-  $("products").innerHTML = data.map(p =>
-    `<a class="list-group-item list-group-item-action product" data-name="${esc(p.name)}">
-       ${esc(p.name)} <i class="bi bi-plus-circle float-end text-success"></i></a>`).join("");
+const tile=(p,cls,em)=>`<div class="relative ${cls} grid place-items-center overflow-hidden" style="background:${GRAD[p.category]}">
+  <span class="${em}">${p.emoji}</span>
+  <img src="/static/img/${p.slug}.jpg" alt="" loading="lazy" onerror="this.remove()" class="absolute inset-0 w-full h-full object-cover"></div>`;
+
+function ctrl(name,n){
+  const e=esc(name);
+  return n
+   ? `<div class="flex items-center gap-1 border border-emerald-200 rounded-xl p-1">
+        <button data-dec="${e}" class="w-7 h-7 rounded-lg hover:bg-gray-100 font-bold">−</button>
+        <span class="w-5 text-center font-bold num pop">${n}</span>
+        <button data-inc="${e}" class="w-7 h-7 rounded-lg bg-[#164E3D] text-white font-bold">+</button></div>`
+   : `<button data-add="${e}" class="bg-[#164E3D] hover:bg-[#0F392B] active:scale-95 transition text-white rounded-xl px-4 py-2 text-sm font-semibold">+ Add</button>`;
 }
 
-function add(name) {
-  if (!cart.includes(name)) { cart.push(name); renderCart(); }
-}
-function remove(name) { cart = cart.filter(x => x !== name); renderCart(); }
-
-function renderCart() {
-  $("count").textContent = cart.length;
-  $("cart").innerHTML = cart.map(n =>
-    `<li class="list-group-item d-flex justify-content-between cap">${esc(n)}
-       <button class="btn btn-sm btn-outline-danger" data-remove="${esc(n)}"><i class="bi bi-x"></i></button></li>`).join("");
-  $("empty").style.display = cart.length ? "none" : "block";
-  $("checkout").disabled = !cart.length;
-  refresh();
+function card(p){
+  const pair=rec.related.find(r=>r.item===p.name);
+  return `<div class="card bg-white rounded-2xl overflow-hidden shadow-sm fadein">
+    <div class="relative">${tile(p,'h-36','text-6xl')}
+      ${pair?`<span class="absolute top-2 left-2 text-[11px] font-semibold bg-emerald-600 text-white rounded-full px-2 py-1">✨ Pairs with your basket · ${Math.round(pair.confidence*100)}%</span>`:''}</div>
+    <div class="p-4"><p class="text-xs text-gray-500">${p.category} · ${p.unit}</p>
+      <h3 class="font-bold truncate">${esc(cap(p.name))}</h3>
+      <div class="flex items-center justify-between mt-3"><span class="font-extrabold num">${rs(p.price)}</span>${ctrl(p.name,cart[p.name]||0)}</div></div></div>`;
 }
 
-function recItem(name, badge, cls) {
-  return `<li class="list-group-item d-flex justify-content-between align-items-center product" data-name="${esc(name)}">
-    <span>${esc(name)}</span><span class="badge ${cls}">${badge}</span></li>`;
+function recRow(name,badge){
+  const p=byName[name]; if(!p) return '';
+  return `<div class="flex items-center gap-3 fadein">
+    ${tile(p,'w-11 h-11 rounded-xl shrink-0','text-2xl')}
+    <div class="min-w-0 flex-1"><p class="font-semibold text-sm truncate">${esc(cap(name))}</p>
+      <p class="text-xs text-emerald-700 font-mono">${badge}</p></div>
+    <button data-add="${esc(name)}" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-800 font-bold hover:bg-emerald-100">+</button></div>`;
 }
 
-async function refresh() {
-  if (!cart.length) { $("related").innerHTML = ""; $("top").innerHTML = ""; return; }
-  const r = await (await fetch("/api/recommend", {
-    method: "POST", headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({cart, n: 5})})).json();
-  $("related").innerHTML = r.related.length
-    ? r.related.map(x => recItem(x.item, `${Math.round(x.confidence*100)}% · lift ${x.lift}`, "bg-success")).join("")
-    : `<li class="list-group-item text-muted">No strong rule for this cart yet.</li>`;
-  $("top").innerHTML = r.top_picks.map(x =>
-    recItem(x.item, `${Math.round(x.probability*100)}% · ${x.reason}`, x.reason === "rule" ? "bg-success" : "bg-secondary")).join("");
+const names=()=>Object.keys(cart);
+const sub=()=>names().reduce((s,n)=>s+byName[n].price*cart[n],0);
+const count=()=>names().reduce((s,n)=>s+cart[n],0);
+
+function renderGrid(){
+  const list=products.filter(p=>(cat==='All'||p.category===cat)&&p.name.includes(q));
+  $('grid').innerHTML=list.map(card).join('')||'<p class="text-gray-500 col-span-full">No products found.</p>';
+  $('shown').textContent=`Showing ${list.length} items`;
+  $('pills').innerHTML=CATS.map(c=>`<button data-cat="${esc(c)}" class="px-3 py-2 rounded-xl text-sm font-semibold ${c===cat?'bg-emerald-50 text-emerald-800 shadow-sm':'text-gray-500 hover:text-gray-800'}">${c}</button>`).join('');
 }
 
-document.addEventListener("click", e => {
-  const rm = e.target.closest("[data-remove]");
-  if (rm) return remove(rm.dataset.remove);
-  const p = e.target.closest("[data-name]");
-  if (p) add(p.dataset.name);
+function renderCart(){
+  const n=count(), s=sub();
+  $('badge').textContent=n; $('badge').classList.remove('pop'); void $('badge').offsetWidth; $('badge').classList.add('pop');
+  $('cnt').textContent=n; $('dcnt').textContent=n; $('hdrTotal').textContent=rs(s); $('sub').textContent=rs(s);
+  $('miniCart').innerHTML=names().map(k=>`<div class="flex justify-between"><span>${esc(cap(k))} × ${cart[k]}</span><span class="num">${rs(byName[k].price*cart[k])}</span></div>`).join('')
+    ||'<p class="text-gray-400">Your cart is empty.</p>';
+  $('dItems').innerHTML=names().map(k=>{const p=byName[k];return `<div class="flex gap-3 fadein">
+    ${tile(p,'w-16 h-16 rounded-xl shrink-0','text-3xl')}
+    <div class="flex-1"><p class="font-semibold">${esc(cap(k))}</p><p class="text-xs text-gray-500">${rs(p.price)} · ${p.unit}</p>
+      <div class="mt-2">${ctrl(k,cart[k])}</div></div>
+    <div class="font-bold num">${rs(p.price*cart[k])}</div></div>`}).join('')||'<p class="text-gray-400 text-center mt-10">Your basket is empty.</p>';
+  const fee=s>=FREE||!n?0:FEE;
+  $('dSub').textContent=rs(s); $('dFee').textContent=fee?rs(fee):'Free'; $('dTot').textContent=rs(s+fee);
+  $('freeBar').style.width=Math.min(100,s/FREE*100)+'%'; $('freePct').textContent=Math.min(100,Math.round(s/FREE*100))+'%';
+  $('freeMsg').innerHTML=s>=FREE?'🎉 You get <b>free delivery</b>':`Add <b>${rs(FREE-s)}</b> for free delivery`;
+}
+
+function renderRec(){
+  $('related').innerHTML=rec.related.map(r=>recRow(r.item,`${Math.round(r.confidence*100)}% confidence · lift ${r.lift}x`)).join('')
+    ||'<p class="text-sm text-gray-400">Add items to see what pairs well.</p>';
+  $('top').innerHTML=rec.top_picks.map(r=>recRow(r.item,`${Math.round(r.probability*100)}% · ${r.reason}`)).join('');
+}
+
+async function refreshRec(){
+  try{
+    rec=await (await fetch('/api/recommend',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cart:names(),n:5})})).json();
+  }catch(e){}
+  renderRec(); renderGrid();
+}
+function update(){ renderCart(); renderGrid(); refreshRec(); }
+
+function toast(msg){const t=$('toast');t.textContent=msg;t.style.opacity=1;clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity=0,1400);}
+function openDrawer(){$('overlay').classList.remove('hidden');$('drawer').classList.remove('translate-x-full');}
+function closeDrawer(){$('overlay').classList.add('hidden');$('drawer').classList.add('translate-x-full');}
+function clearCart(){cart={};update();}
+
+async function checkout(){
+  if(!names().length) return toast('Your basket is empty');
+  const items=names().map(k=>({k,q:cart[k],p:byName[k].price})), s=sub(), fee=s>=FREE?0:FEE;
+  const r=await (await fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cart:names()})})).json();
+  $('rcpt').innerHTML=`<p class="text-center text-gray-500 mb-2">Order #${r.transaction_id}</p>`
+    +items.map(i=>`<div class="flex justify-between"><span>${esc(cap(i.k))} × ${i.q}</span><span class="num">${rs(i.p*i.q)}</span></div>`).join('')
+    +`<div class="flex justify-between pt-2 border-t font-extrabold"><span>Total</span><span class="num">${rs(s+fee)}</span></div>`;
+  $('modal').classList.remove('hidden'); cart={}; closeDrawer(); update();
+}
+
+document.addEventListener('click',e=>{
+  const a=e.target.closest('[data-add],[data-inc],[data-dec],[data-cat]'); if(!a) return;
+  if(a.dataset.cat){cat=a.dataset.cat;return renderGrid();}
+  const k=a.dataset.add||a.dataset.inc||a.dataset.dec;
+  if(a.dataset.dec){cart[k]--; if(cart[k]<=0) delete cart[k];}
+  else{cart[k]=(cart[k]||0)+1; if(a.dataset.add) toast('Added '+cap(k));}
+  update();
 });
-$("search").addEventListener("input", e => loadProducts(e.target.value));
-$("checkout").addEventListener("click", async () => {
-  const r = await (await fetch("/api/checkout", {
-    method: "POST", headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({cart})})).json();
-  alert("Order #" + r.transaction_id + " saved (" + r.items + " items). Thank you!");
-  cart = []; renderCart();
-});
-loadProducts(); renderCart();
+$('search').addEventListener('input',e=>{q=e.target.value.trim().toLowerCase();renderGrid();});
+
+(async()=>{
+  products=await (await fetch('/api/products')).json();
+  products.forEach(p=>byName[p.name]=p);
+  update();
+})();
 </script>
-{% endblock %}
+</body>
+</html>
